@@ -1,6 +1,5 @@
 const GENERATIONS = [
-    // { name: "Mega Evolution", class: "era-mega", color: "#10b981", sets: ['me3', 'me2pt5', 'me2', 'me1'] }, // Waiting for API
-    { name: "Scarlet & Violet", class: "era-sv", color: "#a855f7", sets: [/* 'sv11', 'sv10', 'sv9', */ 'sv8pt5', 'sv8', 'sv7', 'sv6', 'sv5', 'sv4pt5', 'sv4', 'sv3pt5', 'sv3', 'sv2', 'sv1'] },
+    { name: "Scarlet & Violet", class: "era-sv", color: "#a855f7", sets: ['sv8pt5', 'sv8', 'sv7', 'sv6', 'sv5', 'sv4pt5', 'sv4', 'sv3pt5', 'sv3', 'sv2', 'sv1'] },
     { name: "Sword & Shield", class: "era-swsh", color: "#3b82f6", sets: ['swsh12pt5gg', 'swsh12tg', 'swsh12', 'swsh11', 'swsh10', 'swsh9', 'swsh8', 'swsh7', 'swsh45', 'swsh4', 'swsh1'] },
     { name: "Sun & Moon", class: "era-sm", color: "#ec4899", sets: ['sm12', 'sm11', 'sm9', 'sm4', 'sm1'] },
     { name: "Vintage", class: "era-classic", color: "#facc15", sets: ['xy12', 'xy7', 'xy1', 'bw1', 'pl1', 'dp1', 'ex15', 'ex14', 'ex6', 'ex3', 'ex1', 'ecard1', 'neo4', 'neo3', 'neo2', 'neo1', 'gym2', 'gym1', 'base5', 'base4', 'base3', 'base2', 'base1'] }
@@ -31,12 +30,11 @@ const display = document.getElementById('display');
 const img = document.getElementById('card-img');
 const bg = document.getElementById('bg-tiles');
 const packBtn = document.getElementById('pack-btn');
-
-// New Card Info Display Elements
 const infoDisplay = document.getElementById('card-info-display');
 const infoStatus = document.getElementById('info-status');
 const infoDetails = document.getElementById('info-details');
 const starBtn = document.getElementById('star-btn');
+const searchInput = document.getElementById('binder-search');
 
 // Settings Elements
 const settingsBtn = document.getElementById('settings-btn');
@@ -47,19 +45,15 @@ const confirmClearModal = document.getElementById('confirm-clear-modal');
 const cancelClearBtn = document.getElementById('cancel-clear-btn');
 const confirmClearBtn = document.getElementById('confirm-clear-btn');
 const installAppBtn = document.getElementById('install-app-btn');
-
-// Install Instructions Elements
 const installInstructionsModal = document.getElementById('install-instructions-modal');
 const closeInstallBtn = document.getElementById('close-install-btn');
 
-// State
 let currentCardInfo = null;
 
 function init() {
     const savedBinder = JSON.parse(localStorage.getItem('myBinder')) || [];
     renderSidebar(savedBinder);
     
-    // Hide install button completely if running in standalone PWA mode
     if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
         if (installAppBtn) installAppBtn.style.display = 'none';
     }
@@ -72,7 +66,6 @@ function pullCard() {
     display.classList.remove('is-popping');
     display.style.opacity = 0;
 
-    // Clear active highlights while ripping
     document.querySelectorAll('.mini-grid img').forEach(el => el.classList.remove('active-card'));
 
     setTimeout(() => {
@@ -87,6 +80,22 @@ function pullCard() {
 
         const cardId = `${set.id}-${formattedNum}`;
         const imageUrl = `https://images.pokemontcg.io/${set.id}/${formattedNum}_hires.png`;
+
+        // Fetch name in background so search works
+        fetch(`https://api.pokemontcg.io/v2/cards/${cardId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.data && data.data.name) {
+                    let names = JSON.parse(localStorage.getItem('myCardNames')) || {};
+                    names[cardId] = data.data.name;
+                    localStorage.setItem('myCardNames', JSON.stringify(names));
+                    
+                    // Update UI immediately if it's the active card
+                    if (currentCardInfo && currentCardInfo.id === cardId) {
+                         infoDetails.innerText = `${data.data.name} - ${set.name} #${formattedNum}`;
+                    }
+                }
+            }).catch(e => console.log("API fetch failed, skipping name"));
 
         const tempImg = new Image();
         tempImg.src = imageUrl;
@@ -114,18 +123,21 @@ function pullCard() {
 
 function handleStorageAndNotify(cardId, set, gen, formattedNum) {
     let myBinder = JSON.parse(localStorage.getItem('myBinder')) || [];
+    let names = JSON.parse(localStorage.getItem('myCardNames')) || {};
     const isDouble = myBinder.includes(cardId);
     
+    const cardName = names[cardId] ? `${names[cardId]} - ` : "";
+
     if (isDouble) {
         infoStatus.innerText = "Duplicate";
         infoStatus.style.color = "#888"; 
         infoDisplay.style.borderLeftColor = "#444";
-        infoDetails.innerText = `${set.name} #${formattedNum}`;
+        infoDetails.innerText = `${cardName}${set.name} #${formattedNum}`;
     } else {
         infoStatus.innerText = "New Pull";
         infoStatus.style.color = gen.color;
         infoDisplay.style.borderLeftColor = gen.color;
-        infoDetails.innerText = `${set.name} #${formattedNum}`;
+        infoDetails.innerText = `${cardName}${set.name} #${formattedNum}`;
         myBinder.push(cardId);
         localStorage.setItem('myBinder', JSON.stringify(myBinder));
     }
@@ -154,22 +166,19 @@ function updateStarBtn() {
     }
 }
 
-// Star button click event
 if (starBtn) {
     starBtn.addEventListener('click', () => {
         if (!currentCardInfo) return;
-        
         let topHits = JSON.parse(localStorage.getItem('myTopHits')) || [];
         
         if (topHits.includes(currentCardInfo.id)) {
-            topHits = topHits.filter(id => id !== currentCardInfo.id); // Unstar
+            topHits = topHits.filter(id => id !== currentCardInfo.id); 
         } else {
-            topHits.push(currentCardInfo.id); // Star
+            topHits.push(currentCardInfo.id); 
         }
         
         localStorage.setItem('myTopHits', JSON.stringify(topHits));
         updateStarBtn();
-        
         const savedBinder = JSON.parse(localStorage.getItem('myBinder')) || [];
         renderSidebar(savedBinder);
     });
@@ -177,6 +186,7 @@ if (starBtn) {
 
 function renderSidebar(collectedIds) {
     const binderContent = document.getElementById('binder-content');
+    const cardNames = JSON.parse(localStorage.getItem('myCardNames')) || {};
     
     const openStates = {};
     document.querySelectorAll('#binder-content details').forEach(details => {
@@ -192,19 +202,15 @@ function renderSidebar(collectedIds) {
 
     binderContent.innerHTML = ''; 
 
-    // Sync Top Hits
     let topHits = JSON.parse(localStorage.getItem('myTopHits')) || [];
     topHits = topHits.filter(id => collectedIds.includes(id));
     localStorage.setItem('myTopHits', JSON.stringify(topHits));
 
-    // Render Top Hits Binder
+    // Render Top Hits
     if (topHits.length > 0) {
         const hitsDetails = document.createElement('details');
         hitsDetails.className = `gen-wrapper era-hits`;
-        
-        if (openStates['⭐ Top Hits Binder']) {
-            hitsDetails.open = true;
-        }
+        if (openStates['⭐ Top Hits Binder']) hitsDetails.open = true;
         
         const hitsSummary = document.createElement('summary');
         hitsSummary.className = "gen-header";
@@ -216,43 +222,7 @@ function renderSidebar(collectedIds) {
         const grid = document.createElement('div');
         grid.className = 'mini-grid';
         
-        topHits.forEach(id => {
-            const parts = id.split('-');
-            const sNum = parts.pop();
-            const sId = parts.join('-');
-            const cardImg = document.createElement('img');
-            cardImg.src = `https://images.pokemontcg.io/${sId}/${sNum}.png`;
-            cardImg.setAttribute('data-card-id', id);
-
-            // Highlight if currently active
-            if (currentCardInfo && currentCardInfo.id === id) {
-                cardImg.classList.add('active-card');
-            }
-            
-            cardImg.onclick = (e) => {
-                e.stopPropagation();
-                document.getElementById('card-img').src = `https://images.pokemontcg.io/${sId}/${sNum}_hires.png`;
-                document.getElementById('bg-tiles').style.backgroundImage = `url(https://images.pokemontcg.io/${sId}/${sNum}_hires.png)`;
-                document.getElementById('display').classList.remove('is-popping');
-                document.getElementById('display').style.opacity = 1;
-
-                const set = ALL_SETS.find(s => s.id === sId) || { name: sId };
-                const gen = GENERATIONS.find(g => g.sets.includes(sId)) || { color: 'gold' };
-
-                infoStatus.innerText = "Viewing Collection";
-                infoStatus.style.color = "#ccc";
-                infoDisplay.style.borderLeftColor = gen.color;
-                infoDetails.innerText = `${set.name} #${sNum}`;
-                
-                currentCardInfo = { id: id, set: set, num: sNum };
-                updateStarBtn();
-
-                // Update highlights visually without full re-render
-                document.querySelectorAll('.mini-grid img').forEach(el => el.classList.remove('active-card'));
-                document.querySelectorAll(`.mini-grid img[data-card-id="${id}"]`).forEach(el => el.classList.add('active-card'));
-            };
-            grid.appendChild(cardImg);
-        });
+        topHits.forEach(id => createCardElement(id, grid, 'gold', cardNames));
         
         hitsBody.appendChild(grid);
         hitsDetails.appendChild(hitsSummary);
@@ -268,10 +238,7 @@ function renderSidebar(collectedIds) {
         if (hasCardsInGen) {
             const genDetails = document.createElement('details');
             genDetails.className = `gen-wrapper ${gen.class}`;
-            
-            if (openStates[`${gen.name} Binder`]) {
-                genDetails.open = true;
-            }
+            if (openStates[`${gen.name} Binder`]) genDetails.open = true;
 
             const genSummary = document.createElement('summary');
             genSummary.className = "gen-header";
@@ -285,10 +252,7 @@ function renderSidebar(collectedIds) {
                     const setDetails = document.createElement('details');
                     setDetails.className = 'set-item';
                     setDetails.setAttribute('data-set-id', set.id); 
-                    
-                    if (openStates[set.id]) {
-                        setDetails.open = true;
-                    }
+                    if (openStates[set.id]) setDetails.open = true;
 
                     const setSummary = document.createElement('summary');
                     setSummary.innerHTML = `<span class="set-label">${set.name}</span><span class="set-count">${setCards.length}/${set.count}</span>`;
@@ -299,41 +263,8 @@ function renderSidebar(collectedIds) {
                         const numA = parseInt(a.split('-').pop().replace(/\D/g, ''));
                         const numB = parseInt(b.split('-').pop().replace(/\D/g, ''));
                         return numA - numB;
-                    }).forEach(id => {
-                        const parts = id.split('-');
-                        const sNum = parts.pop();
-                        const sId = parts.join('-');
-                        const cardImg = document.createElement('img');
-                        cardImg.src = `https://images.pokemontcg.io/${sId}/${sNum}.png`;
-                        cardImg.setAttribute('data-card-id', id);
+                    }).forEach(id => createCardElement(id, grid, gen.color, cardNames));
 
-                        // Highlight if currently active
-                        if (currentCardInfo && currentCardInfo.id === id) {
-                            cardImg.classList.add('active-card');
-                        }
-                        
-                        cardImg.onclick = (e) => {
-                            e.stopPropagation();
-                            document.getElementById('card-img').src = `https://images.pokemontcg.io/${sId}/${sNum}_hires.png`;
-                            document.getElementById('bg-tiles').style.backgroundImage = `url(https://images.pokemontcg.io/${sId}/${sNum}_hires.png)`;
-                            
-                            document.getElementById('display').classList.remove('is-popping');
-                            document.getElementById('display').style.opacity = 1;
-
-                            infoStatus.innerText = "Viewing Collection";
-                            infoStatus.style.color = "#ccc";
-                            infoDisplay.style.borderLeftColor = gen.color;
-                            infoDetails.innerText = `${set.name} #${sNum}`;
-                            
-                            currentCardInfo = { id: id, set: set, num: sNum };
-                            updateStarBtn();
-
-                            // Update highlights visually without full re-render
-                            document.querySelectorAll('.mini-grid img').forEach(el => el.classList.remove('active-card'));
-                            document.querySelectorAll(`.mini-grid img[data-card-id="${id}"]`).forEach(el => el.classList.add('active-card'));
-                        };
-                        grid.appendChild(cardImg);
-                    });
                     setDetails.appendChild(setSummary);
                     setDetails.appendChild(grid);
                     genBody.appendChild(setDetails);
@@ -343,6 +274,139 @@ function renderSidebar(collectedIds) {
             genDetails.appendChild(genBody);
             binderContent.appendChild(genDetails);
         }
+    });
+
+    // Re-trigger search logic in case a search is currently active
+    if (searchInput && searchInput.value) {
+        searchInput.dispatchEvent(new Event('input'));
+    }
+}
+
+// Helper to create the mini-grid images and bind click events
+function createCardElement(id, grid, genColor, cardNames) {
+    const parts = id.split('-');
+    const sNum = parts.pop();
+    const sId = parts.join('-');
+    const set = ALL_SETS.find(s => s.id === sId) || { name: sId };
+    
+    const cardImg = document.createElement('img');
+    cardImg.src = `https://images.pokemontcg.io/${sId}/${sNum}.png`;
+    cardImg.setAttribute('data-card-id', id);
+    
+    const knownName = cardNames[id] || "";
+    if (knownName) {
+        cardImg.setAttribute('data-card-name', knownName.toLowerCase());
+        cardImg.title = `${knownName} (${set.name} #${sNum})`;
+    } else {
+        cardImg.title = `${set.name} #${sNum}`;
+    }
+
+    if (currentCardInfo && currentCardInfo.id === id) cardImg.classList.add('active-card');
+    
+    cardImg.onclick = (e) => {
+        e.stopPropagation();
+        document.getElementById('card-img').src = `https://images.pokemontcg.io/${sId}/${sNum}_hires.png`;
+        document.getElementById('bg-tiles').style.backgroundImage = `url(https://images.pokemontcg.io/${sId}/${sNum}_hires.png)`;
+        document.getElementById('display').classList.remove('is-popping');
+        document.getElementById('display').style.opacity = 1;
+
+        infoStatus.innerText = "Viewing Collection";
+        infoStatus.style.color = "#ccc";
+        infoDisplay.style.borderLeftColor = genColor;
+        
+        currentCardInfo = { id: id, set: set, num: sNum };
+        updateStarBtn();
+
+        // If name wasn't known, fetch it when clicked to update local storage for next search
+        if (!cardNames[id]) {
+            infoDetails.innerText = `Loading... - ${set.name} #${sNum}`;
+            fetch(`https://api.pokemontcg.io/v2/cards/${id}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.data && data.data.name) {
+                        let names = JSON.parse(localStorage.getItem('myCardNames')) || {};
+                        names[id] = data.data.name;
+                        localStorage.setItem('myCardNames', JSON.stringify(names));
+                        cardImg.setAttribute('data-card-name', data.data.name.toLowerCase());
+                        cardImg.title = `${data.data.name} (${set.name} #${sNum})`;
+                        infoDetails.innerText = `${data.data.name} - ${set.name} #${sNum}`;
+                    } else {
+                        infoDetails.innerText = `${set.name} #${sNum}`;
+                    }
+                }).catch(() => infoDetails.innerText = `${set.name} #${sNum}`);
+        } else {
+            infoDetails.innerText = `${cardNames[id]} - ${set.name} #${sNum}`;
+        }
+
+        document.querySelectorAll('.mini-grid img').forEach(el => el.classList.remove('active-card'));
+        document.querySelectorAll(`.mini-grid img[data-card-id="${id}"]`).forEach(el => el.classList.add('active-card'));
+    };
+    grid.appendChild(cardImg);
+}
+
+// --- Search Filter Logic ---
+if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase();
+        const gens = document.querySelectorAll('.gen-wrapper');
+        
+        gens.forEach(gen => {
+            let genHasVisibleItems = false;
+            const sets = gen.querySelectorAll('.set-item');
+            
+            sets.forEach(set => {
+                let setHasVisibleCards = false;
+                const cards = set.querySelectorAll('.mini-grid img');
+                const setName = set.querySelector('.set-label').innerText.toLowerCase();
+                
+                cards.forEach(card => {
+                    const cardName = card.getAttribute('data-card-name') || "";
+                    if (cardName.includes(term) || setName.includes(term)) {
+                        card.classList.remove('hidden');
+                        setHasVisibleCards = true;
+                    } else {
+                        card.classList.add('hidden');
+                    }
+                });
+
+                if (setHasVisibleCards || setName.includes(term)) {
+                    set.classList.remove('hidden');
+                    genHasVisibleItems = true;
+                    if (term !== "") set.open = true; // Auto-open set
+                } else {
+                    set.classList.add('hidden');
+                }
+            });
+
+            // Top Hits specific logic
+            if (gen.classList.contains('era-hits')) {
+                 let hitsVisible = false;
+                 const hitCards = gen.querySelectorAll('.mini-grid img');
+                 hitCards.forEach(card => {
+                     const cardName = card.getAttribute('data-card-name') || "";
+                     if (cardName.includes(term) || "top hits".includes(term)) {
+                         card.classList.remove('hidden');
+                         hitsVisible = true;
+                     } else {
+                         card.classList.add('hidden');
+                     }
+                 });
+                 if (hitsVisible || term === "") {
+                     gen.classList.remove('hidden');
+                     if (term !== "") gen.open = true;
+                 } else {
+                     gen.classList.add('hidden');
+                 }
+                 return;
+            }
+            
+            if (genHasVisibleItems || gen.querySelector('.gen-header').innerText.toLowerCase().includes(term)) {
+                gen.classList.remove('hidden');
+                if (term !== "") gen.open = true;
+            } else {
+                gen.classList.add('hidden');
+            }
+        });
     });
 }
 
@@ -372,6 +436,7 @@ if (confirmClearBtn) {
     confirmClearBtn.addEventListener('click', () => {
         localStorage.removeItem('myBinder');
         localStorage.removeItem('myTopHits');
+        localStorage.removeItem('myCardNames'); // Clears names too!
         renderSidebar([]);
         display.style.opacity = 0;
         bg.style.backgroundImage = 'none';
@@ -400,8 +465,6 @@ let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    
-    // Only show install button if NOT running standalone
     if (!window.matchMedia('(display-mode: standalone)').matches && window.navigator.standalone !== true) {
         if (installAppBtn) installAppBtn.style.display = 'block'; 
     }

@@ -54,6 +54,13 @@
     #star-btn.active { opacity: 1; filter: drop-shadow(0 0 8px gold); transform: scale(1.1); }
     #star-btn:hover:not(.disabled) { transform: scale(1.2); }
 
+    /* Search Bar Styles */
+    .search-container { margin-bottom: 15px; width: 100%; }
+    #binder-search { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #111; color: white; box-sizing: border-box; font-family: inherit; font-size: 14px; transition: border-color 0.2s; }
+    #binder-search:focus { outline: none; border-color: #a855f7; }
+    #binder-search::placeholder { color: #666; }
+    .hidden { display: none !important; }
+
     /* Button Layout */
     #pack-btn { width: 100%; padding: 15px; margin-bottom: 20px; font-size: 18px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; background: linear-gradient(135deg, #a855f7, #ec4899); color: white; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transition: transform 0.2s, box-shadow 0.2s; flex-shrink: 0; }
     #pack-btn:hover:not(.is-shaking) { transform: scale(1.02); box-shadow: 0 15px 40px rgba(236, 72, 153, 0.4); }
@@ -121,6 +128,10 @@
           <div id="star-btn" class="icon-btn disabled" title="Add to Top Hits">⭐</div>
           <div id="settings-btn" class="icon-btn" title="Settings">⚙️</div>
         </div>
+      </div>
+
+      <div class="search-container">
+        <input type="text" id="binder-search" placeholder="Search Pokémon or Sets...">
       </div>
       
       <button id="pack-btn">💥 Rip Pack</button>
