@@ -81,22 +81,6 @@ function pullCard() {
         const cardId = `${set.id}-${formattedNum}`;
         const imageUrl = `https://images.pokemontcg.io/${set.id}/${formattedNum}_hires.png`;
 
-        // Fetch name in background so search works
-        fetch(`https://api.pokemontcg.io/v2/cards/${cardId}`)
-            .then(res => res.json())
-            .then(data => {
-                if (data && data.data && data.data.name) {
-                    let names = JSON.parse(localStorage.getItem('myCardNames')) || {};
-                    names[cardId] = data.data.name;
-                    localStorage.setItem('myCardNames', JSON.stringify(names));
-                    
-                    // Update UI immediately if it's the active card
-                    if (currentCardInfo && currentCardInfo.id === cardId) {
-                         infoDetails.innerText = `${data.data.name} - ${set.name} #${formattedNum}`;
-                    }
-                }
-            }).catch(e => console.log("API fetch failed, skipping name"));
-
         const tempImg = new Image();
         tempImg.src = imageUrl;
         
@@ -144,6 +128,8 @@ function handleStorageAndNotify(cardId, set, gen, formattedNum) {
 
     currentCardInfo = { id: cardId, set: set, num: formattedNum };
     updateStarBtn();
+    
+    // Rendering the sidebar will automatically fetch the name for the new card if missing
     renderSidebar(myBinder);
 }
 
@@ -282,7 +268,7 @@ function renderSidebar(collectedIds) {
     }
 }
 
-// Helper to create the mini-grid images and bind click events
+// Helper to create the mini-grid images, fetch missing names, and bind clicks
 function createCardElement(id, grid, genColor, cardNames) {
     const parts = id.split('-');
     const sNum = parts.pop();
@@ -293,12 +279,44 @@ function createCardElement(id, grid, genColor, cardNames) {
     cardImg.src = `https://images.pokemontcg.io/${sId}/${sNum}.png`;
     cardImg.setAttribute('data-card-id', id);
     
+    // Helper to apply the name to the DOM and enable search
+    const applyNameToCard = (name) => {
+        cardImg.setAttribute('data-card-name', name.toLowerCase());
+        cardImg.title = `${name} (${set.name} #${sNum})`;
+    };
+
     const knownName = cardNames[id] || "";
     if (knownName) {
-        cardImg.setAttribute('data-card-name', knownName.toLowerCase());
-        cardImg.title = `${knownName} (${set.name} #${sNum})`;
+        applyNameToCard(knownName);
     } else {
         cardImg.title = `${set.name} #${sNum}`;
+        
+        // Fetch missing name in the background so old cards become searchable!
+        fetch(`https://api.pokemontcg.io/v2/cards/${id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.data && data.data.name) {
+                    const fetchedName = data.data.name;
+                    
+                    // Save to storage
+                    let names = JSON.parse(localStorage.getItem('myCardNames')) || {};
+                    names[id] = fetchedName;
+                    localStorage.setItem('myCardNames', JSON.stringify(names));
+                    
+                    // Update the image element
+                    applyNameToCard(fetchedName);
+                    
+                    // If user is currently typing in the search bar, update the view instantly
+                    if (searchInput && searchInput.value) {
+                        searchInput.dispatchEvent(new Event('input'));
+                    }
+
+                    // If this is the currently selected card, update the info text
+                    if (currentCardInfo && currentCardInfo.id === id) {
+                        infoDetails.innerText = `${fetchedName} - ${set.name} #${sNum}`;
+                    }
+                }
+            }).catch(() => console.log("API fetch failed for", id));
     }
 
     if (currentCardInfo && currentCardInfo.id === id) cardImg.classList.add('active-card');
@@ -317,25 +335,12 @@ function createCardElement(id, grid, genColor, cardNames) {
         currentCardInfo = { id: id, set: set, num: sNum };
         updateStarBtn();
 
-        // If name wasn't known, fetch it when clicked to update local storage for next search
-        if (!cardNames[id]) {
-            infoDetails.innerText = `Loading... - ${set.name} #${sNum}`;
-            fetch(`https://api.pokemontcg.io/v2/cards/${id}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data && data.data && data.data.name) {
-                        let names = JSON.parse(localStorage.getItem('myCardNames')) || {};
-                        names[id] = data.data.name;
-                        localStorage.setItem('myCardNames', JSON.stringify(names));
-                        cardImg.setAttribute('data-card-name', data.data.name.toLowerCase());
-                        cardImg.title = `${data.data.name} (${set.name} #${sNum})`;
-                        infoDetails.innerText = `${data.data.name} - ${set.name} #${sNum}`;
-                    } else {
-                        infoDetails.innerText = `${set.name} #${sNum}`;
-                    }
-                }).catch(() => infoDetails.innerText = `${set.name} #${sNum}`);
+        // Display the name if we know it
+        const currentKnownName = JSON.parse(localStorage.getItem('myCardNames'))?.[id] || "";
+        if (currentKnownName) {
+            infoDetails.innerText = `${currentKnownName} - ${set.name} #${sNum}`;
         } else {
-            infoDetails.innerText = `${cardNames[id]} - ${set.name} #${sNum}`;
+            infoDetails.innerText = `${set.name} #${sNum}`;
         }
 
         document.querySelectorAll('.mini-grid img').forEach(el => el.classList.remove('active-card'));
@@ -448,6 +453,7 @@ if (confirmClearBtn) {
         
         currentCardInfo = null;
         updateStarBtn();
+        searchInput.value = ''; // Clear search bar on reset
         
         confirmClearModal.classList.remove('active');
     });
