@@ -25,8 +25,6 @@ const ALL_SETS = [
     { id: 'sv4pt5', name: 'Paldean Fates', count: 245 }, { id: 'sv5', name: 'Temporal Forces', count: 218 }, { id: 'sv6', name: 'Twilight Masquerade', count: 226 }, 
     { id: 'sv7', name: 'Stellar Crown', count: 175 }, { id: 'sv8', name: 'Surging Sparks', count: 252 }, { id: 'sv8pt5', name: 'Prismatic Evolutions', count: 175 },
     { id: 'sv9', name: 'Journey Together', count: 175 }, { id: 'sv10', name: 'Destined Rivals', count: 175 }, { id: 'sv11', name: 'Black Bolt & White Flare', count: 250 },
-    
-    // Fixed Mega Evolution IDs
     { id: 'me1', name: 'Mega Evolution', count: 180 }, { id: 'me2', name: 'Phantasmal Flames', count: 180 }, { id: 'me2pt5', name: 'Ascended Heroes', count: 180 }, { id: 'me3', name: 'Perfect Order', count: 180 }
 ];
 
@@ -35,9 +33,11 @@ const display = document.getElementById('display');
 const img = document.getElementById('card-img');
 const bg = document.getElementById('bg-tiles');
 const packBtn = document.getElementById('pack-btn');
-const notify = document.getElementById('pull-notify');
-const notifyTitle = document.querySelector('#pull-notify h3');
-const notifyText = document.getElementById('notify-text');
+
+// New Card Info Display Elements
+const infoDisplay = document.getElementById('card-info-display');
+const infoStatus = document.getElementById('info-status');
+const infoDetails = document.getElementById('info-details');
 
 // Settings Elements
 const settingsBtn = document.getElementById('settings-btn');
@@ -89,7 +89,6 @@ function pullCard() {
             handleStorageAndNotify(cardId, set, gen, formattedNum);
         };
         
-        // Error handling if API image is missing
         tempImg.onerror = () => {
              packBtn.classList.remove('is-shaking');
              packBtn.innerText = "💥 Rip Another";
@@ -103,34 +102,20 @@ function handleStorageAndNotify(cardId, set, gen, formattedNum) {
     const isDouble = myBinder.includes(cardId);
     
     if (isDouble) {
-        notifyTitle.innerText = "Duplicate";
-        notifyTitle.style.color = "#888"; 
-        notifyText.innerText = `${set.name} #${formattedNum}`;
+        infoStatus.innerText = "Duplicate";
+        infoStatus.style.color = "#888"; 
+        infoDisplay.style.borderLeftColor = "#444";
+        infoDetails.innerText = `${set.name} #${formattedNum}`;
     } else {
-        notifyTitle.innerText = "New Pull";
-        notifyTitle.style.color = gen.color;
-        notifyText.innerText = `${set.name} #${formattedNum}`;
+        infoStatus.innerText = "New Pull";
+        infoStatus.style.color = gen.color;
+        infoDisplay.style.borderLeftColor = gen.color;
+        infoDetails.innerText = `${set.name} #${formattedNum}`;
         myBinder.push(cardId);
         localStorage.setItem('myBinder', JSON.stringify(myBinder));
     }
 
-    notify.style.setProperty('--era-color', isDouble ? "#444" : gen.color);
-    notify.onclick = () => openSetInBinder(gen.class, set.id); 
-
-    setTimeout(() => notify.classList.add('show'), 300);
-    setTimeout(() => notify.classList.remove('show'), 5000); 
-
     renderSidebar(myBinder);
-}
-
-function openSetInBinder(genClass, setId) {
-    const genWrap = document.querySelector(`.${genClass}`);
-    const setItem = document.querySelector(`.set-item[data-set-id="${setId}"]`);
-    if (genWrap && setItem) {
-        genWrap.open = true; 
-        setItem.open = true; 
-        setItem.scrollIntoView({ behavior: 'smooth', block: 'center' }); 
-    }
 }
 
 function renderSidebar(collectedIds) {
@@ -178,6 +163,12 @@ function renderSidebar(collectedIds) {
                             
                             document.getElementById('display').classList.remove('is-popping');
                             document.getElementById('display').style.opacity = 1;
+
+                            // Update the Info Display for viewed cards
+                            infoStatus.innerText = "Viewing Collection";
+                            infoStatus.style.color = "#ccc";
+                            infoDisplay.style.borderLeftColor = gen.color;
+                            infoDetails.innerText = `${set.name} #${sNum}`;
                         };
                         grid.appendChild(cardImg);
                     });
@@ -196,7 +187,6 @@ function renderSidebar(collectedIds) {
 // --- Event Listeners ---
 packBtn.addEventListener('click', pullCard);
 
-// Settings Modals Logic (Bulletproofed)
 if (settingsBtn && settingsModal) {
     settingsBtn.addEventListener('click', () => settingsModal.classList.add('active'));
 }
@@ -222,6 +212,12 @@ if (confirmClearBtn) {
         renderSidebar([]);
         display.style.opacity = 0;
         bg.style.backgroundImage = 'none';
+        
+        infoStatus.innerText = "POKETAB DEX";
+        infoStatus.style.color = "#aaa";
+        infoDisplay.style.borderLeftColor = "#444";
+        infoDetails.innerText = "Ready to pull!";
+        
         confirmClearModal.classList.remove('active');
     });
 }
@@ -245,5 +241,4 @@ installAppBtn.addEventListener('click', async () => {
     }
 });
 
-// Run init on load
 init();
