@@ -72,6 +72,9 @@ function pullCard() {
     display.classList.remove('is-popping');
     display.style.opacity = 0;
 
+    // Clear active highlights while ripping
+    document.querySelectorAll('.mini-grid img').forEach(el => el.classList.remove('active-card'));
+
     setTimeout(() => {
         const set = ALL_SETS[Math.floor(Math.random() * ALL_SETS.length)];
         const gen = GENERATIONS.find(g => g.sets.includes(set.id));
@@ -219,6 +222,12 @@ function renderSidebar(collectedIds) {
             const sId = parts.join('-');
             const cardImg = document.createElement('img');
             cardImg.src = `https://images.pokemontcg.io/${sId}/${sNum}.png`;
+            cardImg.setAttribute('data-card-id', id);
+
+            // Highlight if currently active
+            if (currentCardInfo && currentCardInfo.id === id) {
+                cardImg.classList.add('active-card');
+            }
             
             cardImg.onclick = (e) => {
                 e.stopPropagation();
@@ -237,6 +246,10 @@ function renderSidebar(collectedIds) {
                 
                 currentCardInfo = { id: id, set: set, num: sNum };
                 updateStarBtn();
+
+                // Update highlights visually without full re-render
+                document.querySelectorAll('.mini-grid img').forEach(el => el.classList.remove('active-card'));
+                document.querySelectorAll(`.mini-grid img[data-card-id="${id}"]`).forEach(el => el.classList.add('active-card'));
             };
             grid.appendChild(cardImg);
         });
@@ -292,6 +305,12 @@ function renderSidebar(collectedIds) {
                         const sId = parts.join('-');
                         const cardImg = document.createElement('img');
                         cardImg.src = `https://images.pokemontcg.io/${sId}/${sNum}.png`;
+                        cardImg.setAttribute('data-card-id', id);
+
+                        // Highlight if currently active
+                        if (currentCardInfo && currentCardInfo.id === id) {
+                            cardImg.classList.add('active-card');
+                        }
                         
                         cardImg.onclick = (e) => {
                             e.stopPropagation();
@@ -308,6 +327,10 @@ function renderSidebar(collectedIds) {
                             
                             currentCardInfo = { id: id, set: set, num: sNum };
                             updateStarBtn();
+
+                            // Update highlights visually without full re-render
+                            document.querySelectorAll('.mini-grid img').forEach(el => el.classList.remove('active-card'));
+                            document.querySelectorAll(`.mini-grid img[data-card-id="${id}"]`).forEach(el => el.classList.add('active-card'));
                         };
                         grid.appendChild(cardImg);
                     });
