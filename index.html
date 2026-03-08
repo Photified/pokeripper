@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Poke Ripper</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    body { background: #050505; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; position: relative; font-family: 'Segoe UI', Tahoma, sans-serif; }
+    #bg-tiles { position: absolute; top: -20%; left: -20%; width: 140%; height: 140%; z-index: -1; background-repeat: repeat; background-size: 250px; filter: blur(15px); opacity: 0.3; transform: rotate(-15deg); transition: background-image 0.5s ease; }
+    
+    #display { z-index: 10; text-align: center; margin-right: 320px; position: relative; opacity: 0; }
+    img#card-img { max-height: 80vh; border-radius: 15px; box-shadow: 0 30px 60px rgba(0,0,0,1); position: relative; z-index: 2; }
+
+    /* --- NEW ANIMATIONS --- */
+    @keyframes shake {
+      0% { transform: translateX(-50%) rotate(0deg); }
+      25% { transform: translateX(-52%) rotate(-3deg); }
+      50% { transform: translateX(-48%) rotate(3deg); }
+      75% { transform: translateX(-52%) rotate(-3deg); }
+      100% { transform: translateX(-50%) rotate(0deg); }
+    }
+    .is-shaking { animation: shake 0.3s ease-in-out infinite; pointer-events: none; filter: brightness(1.2); }
+
+    @keyframes cardPop {
+      0% { transform: scale(0.3) translateY(100px); opacity: 0; }
+      60% { transform: scale(1.05) translateY(-10px); opacity: 1; }
+      100% { transform: scale(1) translateY(0); opacity: 1; }
+    }
+    .is-popping { animation: cardPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+    /* ---------------------- */
+
+    #pack-btn {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      padding: 15px 40px;
+      font-size: 20px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      background: linear-gradient(135deg, #a855f7, #ec4899);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    #pack-btn:hover:not(.is-shaking) { transform: translateX(-50%) scale(1.05); box-shadow: 0 15px 40px rgba(236, 72, 153, 0.4); }
+    #pack-btn:active:not(.is-shaking) { transform: translateX(-50%) scale(0.95); }
+
+    /* Pull Notification */
+    #pull-notify {
+      position: fixed; bottom: 30px; left: 50px; background: rgba(25, 25, 25, 0.95);
+      border-left: 4px solid var(--era-color, #fff); padding: 15px 25px; border-radius: 4px;
+      color: white; z-index: 2000; transform: translateX(-150%); 
+      transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
+      backdrop-filter: blur(10px); box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+      cursor: pointer; user-select: none;
+    }
+    #pull-notify.show { transform: translateX(0); opacity: 1; }
+    #pull-notify h3 { margin: 0; font-size: 10px; text-transform: uppercase; letter-spacing: 2px; }
+    #pull-notify p { margin: 5px 0 0 0; font-weight: bold; font-size: 16px; color: #eee; }
+    #pull-notify::after { content: 'Click to view in binder →'; display: block; font-size: 9px; margin-top: 8px; opacity: 0.5; text-transform: uppercase; }
+
+    /* Sidebar Binder */
+    #sidebar-binder { position: fixed; top: 0; right: 0; width: 320px; height: 100%; background: rgba(10, 10, 10, 0.95); border-left: 1px solid #333; z-index: 1000; overflow-y: auto; padding: 20px; box-sizing: border-box; backdrop-filter: blur(10px); color: white; }
+    h2 { font-size: 15px; opacity: 0.8; letter-spacing: 4px; text-transform: uppercase; margin: 10px 0 30px 0; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; }
+    .gen-wrapper { margin-bottom: 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); overflow: hidden; }
+    .gen-header { cursor: pointer; padding: 15px; font-weight: bold; text-transform: uppercase; font-size: 11px; letter-spacing: 2px; list-style: none; background: rgba(255,255,255,0.03); border-bottom: 2px solid var(--spine-color); color: var(--spine-color); text-align: center; }
+    
+    /* Era Colors */
+    .era-mega { --spine-color: #10b981; } /* Emerald Green for Mega Era */
+    .era-sv { --spine-color: #a855f7; } 
+    .era-swsh { --spine-color: #3b82f6; } 
+    .era-sm { --spine-color: #ec4899; } 
+    .era-classic { --spine-color: #facc15; }
+    
+    .set-item { margin: 8px; border-radius: 4px; overflow: hidden; }
+    .set-item summary { list-style: none; cursor: pointer; padding: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--spine-color); background: rgba(0,0,0,0.3); font-size: 11px; }
+    .set-label { font-weight: 800; text-transform: uppercase; color: #eee; }
+    .set-count { font-weight: bold; color: var(--spine-color); font-size: 10px; }
+    .mini-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 10px; background: rgba(0,0,0,0.5); }
+    .mini-grid img { width: 100%; border-radius: 2px; cursor: pointer; transition: transform 0.1s; }
+    .mini-grid img:hover { transform: scale(1.3); z-index: 1001; outline: 2px solid var(--spine-color); }
+    ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: #333; }
+
+    /* Mobile adjustments */
+    @media (max-width: 768px) {
+      #display { margin-right: 0; margin-bottom: 60px; }
+      #sidebar-binder { display: none; }
+      img#card-img { max-height: 65vh; }
+    }
+  </style>
+</head>
+<body>
+  <div id="bg-tiles"></div>
+  
+  <div id="display"><img id="card-img" src=""></div>
+  
+  <button id="pack-btn">💥 Rip Pack</button>
+
+  <div id="pull-notify">
+    <h3>New Pull</h3>
+    <p id="notify-text"></p>
+  </div>
+  
+  <div id="sidebar-binder">
+    <h2>PokeTab Dex</h2>
+    <div id="binder-content"></div>
+  </div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
+  <script src="script.js"></script>
+</body>
+</html>
