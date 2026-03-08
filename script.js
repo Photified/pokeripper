@@ -172,7 +172,7 @@ function renderSidebar(collectedIds) {
     if (topHits.length > 0) {
         const hitsDetails = document.createElement('details');
         hitsDetails.className = `gen-wrapper era-hits`;
-        hitsDetails.open = true; // Keep Top Hits open by default
+        // Removed hitsDetails.open = true; so it stays closed by default
         
         const hitsSummary = document.createElement('summary');
         hitsSummary.className = "gen-header";
