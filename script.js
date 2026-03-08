@@ -161,6 +161,20 @@ starBtn.addEventListener('click', () => {
 
 function renderSidebar(collectedIds) {
     const binderContent = document.getElementById('binder-content');
+    
+    // 1. Capture what the user currently has open before rebuilding
+    const openStates = {};
+    document.querySelectorAll('#binder-content details').forEach(details => {
+        if (details.open) {
+            let id = details.getAttribute('data-set-id'); 
+            if (!id) {
+                const span = details.querySelector('summary span');
+                if (span) id = span.innerText;
+            }
+            if (id) openStates[id] = true;
+        }
+    });
+
     binderContent.innerHTML = ''; 
 
     // Sync Top Hits (remove cards if the main binder was cleared)
@@ -172,7 +186,11 @@ function renderSidebar(collectedIds) {
     if (topHits.length > 0) {
         const hitsDetails = document.createElement('details');
         hitsDetails.className = `gen-wrapper era-hits`;
-        // Removed hitsDetails.open = true; so it stays closed by default
+        
+        // 2. Re-apply open state if it was open
+        if (openStates['⭐ Top Hits Binder']) {
+            hitsDetails.open = true;
+        }
         
         const hitsSummary = document.createElement('summary');
         hitsSummary.className = "gen-header";
@@ -226,6 +244,12 @@ function renderSidebar(collectedIds) {
         if (hasCardsInGen) {
             const genDetails = document.createElement('details');
             genDetails.className = `gen-wrapper ${gen.class}`;
+            
+            // 2. Re-apply open state
+            if (openStates[`${gen.name} Binder`]) {
+                genDetails.open = true;
+            }
+
             const genSummary = document.createElement('summary');
             genSummary.className = "gen-header";
             genSummary.innerHTML = `<span>${gen.name} Binder</span>`;
@@ -238,6 +262,12 @@ function renderSidebar(collectedIds) {
                     const setDetails = document.createElement('details');
                     setDetails.className = 'set-item';
                     setDetails.setAttribute('data-set-id', set.id); 
+                    
+                    // 2. Re-apply open state
+                    if (openStates[set.id]) {
+                        setDetails.open = true;
+                    }
+
                     const setSummary = document.createElement('summary');
                     setSummary.innerHTML = `<span class="set-label">${set.name}</span><span class="set-count">${setCards.length}/${set.count}</span>`;
                     const grid = document.createElement('div');
@@ -325,7 +355,7 @@ if (confirmClearBtn) {
     });
 }
 
-// PWA Install Prompt Logic - Bulletproofed
+// PWA Install Prompt Logic
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
