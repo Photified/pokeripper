@@ -27,9 +27,10 @@
     }
     .is-shaking { animation: shake 0.3s ease-in-out infinite; pointer-events: none; filter: brightness(1.2); }
 
+    /* Fixed Pop Animation to prevent off-screen clipping */
     @keyframes cardPop {
-      0% { transform: scale(0.3) translateY(100px); opacity: 0; }
-      60% { transform: scale(1.05) translateY(-10px); opacity: 1; }
+      0% { transform: scale(0.5) translateY(50px); opacity: 0; }
+      60% { transform: scale(1.02) translateY(0); opacity: 1; }
       100% { transform: scale(1) translateY(0); opacity: 1; }
     }
     .is-popping { animation: cardPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
@@ -64,7 +65,7 @@
     .modal-box { background: #111; border: 1px solid #333; border-top: 4px solid #a855f7; border-radius: 12px; padding: 25px; width: 300px; max-width: 90vw; text-align: center; color: white; box-shadow: 0 20px 50px rgba(0,0,0,1); transform: translateY(20px) scale(0.95); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
     .modal-overlay.active .modal-box { transform: translateY(0) scale(1); }
     .modal-box h3 { margin-top: 0; text-transform: uppercase; letter-spacing: 2px; font-size: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
-    .modal-box p { font-size: 14px; color: #aaa; margin-bottom: 20px; }
+    .modal-box p { font-size: 14px; color: #aaa; margin-bottom: 20px; line-height: 1.5; }
     
     .modal-btn { background: #222; color: white; border: 1px solid #444; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; box-sizing: border-box; margin-bottom: 10px; transition: background 0.2s; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
     .modal-btn:hover { background: #333; }
@@ -124,6 +125,15 @@
       <button id="install-app-btn" class="modal-btn primary">📱 Install App</button>
       <button id="open-clear-modal-btn" class="modal-btn danger">🗑️ Clear Pokedex</button>
       <button id="close-settings-btn" class="modal-btn">Close</button>
+    </div>
+  </div>
+
+  <div id="install-instructions-modal" class="modal-overlay">
+    <div class="modal-box" style="border-top-color: #3b82f6;">
+      <h3>Install App</h3>
+      <p>To install Poke Ripper to your phone:</p>
+      <p style="font-size: 13px; color: #ddd; background: #222; padding: 10px; border-radius: 6px;">Tap your browser's <strong>Menu</strong> (three dots ⋮ or share icon ⍗) and select<br><br><strong>➕ Add to Home Screen</strong></p>
+      <button id="close-install-btn" class="modal-btn">Got it</button>
     </div>
   </div>
 

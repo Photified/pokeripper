@@ -369,21 +369,18 @@ let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    // Make sure the button is visible if the browser supports native install
     if (installAppBtn) installAppBtn.style.display = 'block'; 
 });
 
 if (installAppBtn) {
     installAppBtn.addEventListener('click', async () => {
         if (deferredPrompt) {
-            // Trigger native browser install prompt
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
             if (outcome === 'accepted') {
                 deferredPrompt = null;
             }
         } else {
-            // Browser blocked native prompt (iOS Safari, etc.) -> Show custom modal
             if (settingsModal) settingsModal.classList.remove('active');
             if (installInstructionsModal) installInstructionsModal.classList.add('active');
         }
