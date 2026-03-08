@@ -48,6 +48,10 @@ const cancelClearBtn = document.getElementById('cancel-clear-btn');
 const confirmClearBtn = document.getElementById('confirm-clear-btn');
 const installAppBtn = document.getElementById('install-app-btn');
 
+// Install Instructions Elements
+const installInstructionsModal = document.getElementById('install-instructions-modal');
+const closeInstallBtn = document.getElementById('close-install-btn');
+
 // State
 let currentCardInfo = null;
 
@@ -142,27 +146,28 @@ function updateStarBtn() {
 }
 
 // Star button click event
-starBtn.addEventListener('click', () => {
-    if (!currentCardInfo) return;
-    
-    let topHits = JSON.parse(localStorage.getItem('myTopHits')) || [];
-    if (topHits.includes(currentCardInfo.id)) {
-        topHits = topHits.filter(id => id !== currentCardInfo.id); // Unstar
-    } else {
-        topHits.push(currentCardInfo.id); // Star
-    }
-    
-    localStorage.setItem('myTopHits', JSON.stringify(topHits));
-    updateStarBtn();
-    
-    const savedBinder = JSON.parse(localStorage.getItem('myBinder')) || [];
-    renderSidebar(savedBinder);
-});
+if (starBtn) {
+    starBtn.addEventListener('click', () => {
+        if (!currentCardInfo) return;
+        
+        let topHits = JSON.parse(localStorage.getItem('myTopHits')) || [];
+        if (topHits.includes(currentCardInfo.id)) {
+            topHits = topHits.filter(id => id !== currentCardInfo.id); // Unstar
+        } else {
+            topHits.push(currentCardInfo.id); // Star
+        }
+        
+        localStorage.setItem('myTopHits', JSON.stringify(topHits));
+        updateStarBtn();
+        
+        const savedBinder = JSON.parse(localStorage.getItem('myBinder')) || [];
+        renderSidebar(savedBinder);
+    });
+}
 
 function renderSidebar(collectedIds) {
     const binderContent = document.getElementById('binder-content');
     
-    // 1. Capture what the user currently has open before rebuilding
     const openStates = {};
     document.querySelectorAll('#binder-content details').forEach(details => {
         if (details.open) {
@@ -177,7 +182,7 @@ function renderSidebar(collectedIds) {
 
     binderContent.innerHTML = ''; 
 
-    // Sync Top Hits (remove cards if the main binder was cleared)
+    // Sync Top Hits
     let topHits = JSON.parse(localStorage.getItem('myTopHits')) || [];
     topHits = topHits.filter(id => collectedIds.includes(id));
     localStorage.setItem('myTopHits', JSON.stringify(topHits));
@@ -187,7 +192,6 @@ function renderSidebar(collectedIds) {
         const hitsDetails = document.createElement('details');
         hitsDetails.className = `gen-wrapper era-hits`;
         
-        // 2. Re-apply open state if it was open
         if (openStates['⭐ Top Hits Binder']) {
             hitsDetails.open = true;
         }
@@ -245,7 +249,6 @@ function renderSidebar(collectedIds) {
             const genDetails = document.createElement('details');
             genDetails.className = `gen-wrapper ${gen.class}`;
             
-            // 2. Re-apply open state
             if (openStates[`${gen.name} Binder`]) {
                 genDetails.open = true;
             }
@@ -263,7 +266,6 @@ function renderSidebar(collectedIds) {
                     setDetails.className = 'set-item';
                     setDetails.setAttribute('data-set-id', set.id); 
                     
-                    // 2. Re-apply open state
                     if (openStates[set.id]) {
                         setDetails.open = true;
                     }
@@ -314,7 +316,7 @@ function renderSidebar(collectedIds) {
 }
 
 // --- Event Listeners ---
-packBtn.addEventListener('click', pullCard);
+if (packBtn) packBtn.addEventListener('click', pullCard);
 
 if (settingsBtn && settingsModal) {
     settingsBtn.addEventListener('click', () => settingsModal.classList.add('active'));
@@ -355,23 +357,37 @@ if (confirmClearBtn) {
     });
 }
 
-// PWA Install Prompt Logic
+// --- Install Instructions Modal Logic ---
+if (closeInstallBtn) {
+    closeInstallBtn.addEventListener('click', () => {
+        if (installInstructionsModal) installInstructionsModal.classList.remove('active');
+    });
+}
+
+// --- PWA Install Prompt Logic ---
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
+    // Make sure the button is visible if the browser supports native install
+    if (installAppBtn) installAppBtn.style.display = 'block'; 
 });
 
-installAppBtn.addEventListener('click', async () => {
-    if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-            deferredPrompt = null;
+if (installAppBtn) {
+    installAppBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+            // Trigger native browser install prompt
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                deferredPrompt = null;
+            }
+        } else {
+            // Browser blocked native prompt (iOS Safari, etc.) -> Show custom modal
+            if (settingsModal) settingsModal.classList.remove('active');
+            if (installInstructionsModal) installInstructionsModal.classList.add('active');
         }
-    } else {
-        alert("To install, look for 'Add to Home Screen' in your browser's menu (usually accessed via the Share icon on iOS, or the three dots menu on Android).");
-    }
-});
+    });
+}
 
 init();
