@@ -36,7 +36,6 @@ const infoDetails = document.getElementById('info-details');
 const starBtn = document.getElementById('star-btn');
 const searchInput = document.getElementById('binder-search');
 
-// Settings Elements
 const settingsBtn = document.getElementById('settings-btn');
 const settingsModal = document.getElementById('settings-modal');
 const closeSettingsBtn = document.getElementById('close-settings-btn');
@@ -48,8 +47,82 @@ const installAppBtn = document.getElementById('install-app-btn');
 const installInstructionsModal = document.getElementById('install-instructions-modal');
 const closeInstallBtn = document.getElementById('close-install-btn');
 
+// State
 let currentCardInfo = null;
+const nameFetchQueue = new Set();
+let isFetchingNames = false;
 
+// --- Smart Background Fetcher ---
+async function processNameQueue() {
+    if (isFetchingNames || nameFetchQueue.size === 0) return;
+    isFetchingNames = true;
+
+    for (const cardId of Array.from(nameFetchQueue)) {
+        nameFetchQueue.delete(cardId);
+        try {
+            const res = await fetch(`https://api.pokemontcg.io/v2/cards/${cardId}`);
+            if (res.status === 429) {
+                // Rate limited. Pause for a couple seconds, put it back in queue, and resume.
+                nameFetchQueue.add(cardId);
+                await new Promise(r => setTimeout(r, 2000));
+                continue; 
+            }
+            
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.data && data.data.name) {
+                    const fetchedName = data.data.name;
+                    let names = JSON.parse(localStorage.getItem('myCardNames')) || {};
+                    names[cardId] = fetchedName;
+                    localStorage.setItem('myCardNames', JSON.stringify(names));
+                    
+                    updateDOMWithNewName(cardId, fetchedName);
+                }
+            }
+        } catch (error) {
+            console.log("Network error fetching name for", cardId);
+        }
+        
+        // Wait 300ms between calls to avoid making the API angry
+        await new Promise(r => setTimeout(r, 300));
+    }
+    isFetchingNames = false;
+}
+
+function updateDOMWithNewName(cardId, name) {
+    // 1. Give the binder images their new searchable names
+    document.querySelectorAll(`.mini-grid img[data-card-id="${cardId}"]`).forEach(img => {
+        img.setAttribute('data-card-name', name.toLowerCase());
+        const parts = cardId.split('-');
+        const sNum = parts.pop();
+        const sId = parts.join('-');
+        const setMatch = ALL_SETS.find(s => s.id === sId);
+        const setName = setMatch ? setMatch.name : sId;
+        img.title = `${name} (${setName} #${sNum})`;
+    });
+    
+    // 2. Update the text if the user is currently looking at this exact card
+    if (currentCardInfo && currentCardInfo.id === cardId) {
+         if (infoDetails.innerText.includes('Loading...')) {
+             infoDetails.innerText = `${name} - ${currentCardInfo.set.name} #${currentCardInfo.num}`;
+         }
+    }
+    
+    // 3. Kick the search bar to re-filter instantly if they are typing
+    if (searchInput && searchInput.value) {
+        searchInput.dispatchEvent(new Event('input'));
+    }
+}
+
+function queueNameFetch(cardId) {
+    let names = JSON.parse(localStorage.getItem('myCardNames')) || {};
+    if (!names[cardId]) {
+        nameFetchQueue.add(cardId);
+        processNameQueue(); // Kickstart the queue if it's asleep
+    }
+}
+
+// --- Core Logic ---
 function init() {
     const savedBinder = JSON.parse(localStorage.getItem('myBinder')) || [];
     renderSidebar(savedBinder);
@@ -110,6 +183,9 @@ function handleStorageAndNotify(cardId, set, gen, formattedNum) {
     let names = JSON.parse(localStorage.getItem('myCardNames')) || {};
     const isDouble = myBinder.includes(cardId);
     
+    // Kick off smart fetch for this new card immediately 
+    queueNameFetch(cardId);
+
     const cardName = names[cardId] ? `${names[cardId]} - ` : "";
 
     if (isDouble) {
@@ -128,8 +204,6 @@ function handleStorageAndNotify(cardId, set, gen, formattedNum) {
 
     currentCardInfo = { id: cardId, set: set, num: formattedNum };
     updateStarBtn();
-    
-    // Rendering the sidebar will automatically fetch the name for the new card if missing
     renderSidebar(myBinder);
 }
 
@@ -268,7 +342,7 @@ function renderSidebar(collectedIds) {
     }
 }
 
-// Helper to create the mini-grid images, fetch missing names, and bind clicks
+// Helper to create grid images and bind clicks
 function createCardElement(id, grid, genColor, cardNames) {
     const parts = id.split('-');
     const sNum = parts.pop();
@@ -279,44 +353,13 @@ function createCardElement(id, grid, genColor, cardNames) {
     cardImg.src = `https://images.pokemontcg.io/${sId}/${sNum}.png`;
     cardImg.setAttribute('data-card-id', id);
     
-    // Helper to apply the name to the DOM and enable search
-    const applyNameToCard = (name) => {
-        cardImg.setAttribute('data-card-name', name.toLowerCase());
-        cardImg.title = `${name} (${set.name} #${sNum})`;
-    };
-
     const knownName = cardNames[id] || "";
     if (knownName) {
-        applyNameToCard(knownName);
+        cardImg.setAttribute('data-card-name', knownName.toLowerCase());
+        cardImg.title = `${knownName} (${set.name} #${sNum})`;
     } else {
         cardImg.title = `${set.name} #${sNum}`;
-        
-        // Fetch missing name in the background so old cards become searchable!
-        fetch(`https://api.pokemontcg.io/v2/cards/${id}`)
-            .then(res => res.json())
-            .then(data => {
-                if (data && data.data && data.data.name) {
-                    const fetchedName = data.data.name;
-                    
-                    // Save to storage
-                    let names = JSON.parse(localStorage.getItem('myCardNames')) || {};
-                    names[id] = fetchedName;
-                    localStorage.setItem('myCardNames', JSON.stringify(names));
-                    
-                    // Update the image element
-                    applyNameToCard(fetchedName);
-                    
-                    // If user is currently typing in the search bar, update the view instantly
-                    if (searchInput && searchInput.value) {
-                        searchInput.dispatchEvent(new Event('input'));
-                    }
-
-                    // If this is the currently selected card, update the info text
-                    if (currentCardInfo && currentCardInfo.id === id) {
-                        infoDetails.innerText = `${fetchedName} - ${set.name} #${sNum}`;
-                    }
-                }
-            }).catch(() => console.log("API fetch failed for", id));
+        queueNameFetch(id); // Safely queue it up!
     }
 
     if (currentCardInfo && currentCardInfo.id === id) cardImg.classList.add('active-card');
@@ -335,12 +378,12 @@ function createCardElement(id, grid, genColor, cardNames) {
         currentCardInfo = { id: id, set: set, num: sNum };
         updateStarBtn();
 
-        // Display the name if we know it
         const currentKnownName = JSON.parse(localStorage.getItem('myCardNames'))?.[id] || "";
         if (currentKnownName) {
             infoDetails.innerText = `${currentKnownName} - ${set.name} #${sNum}`;
         } else {
-            infoDetails.innerText = `${set.name} #${sNum}`;
+            infoDetails.innerText = `Loading... - ${set.name} #${sNum}`;
+            queueNameFetch(id); 
         }
 
         document.querySelectorAll('.mini-grid img').forEach(el => el.classList.remove('active-card'));
@@ -352,7 +395,7 @@ function createCardElement(id, grid, genColor, cardNames) {
 // --- Search Filter Logic ---
 if (searchInput) {
     searchInput.addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase();
+        const term = e.target.value.toLowerCase().trim();
         const gens = document.querySelectorAll('.gen-wrapper');
         
         gens.forEach(gen => {
@@ -377,13 +420,12 @@ if (searchInput) {
                 if (setHasVisibleCards || setName.includes(term)) {
                     set.classList.remove('hidden');
                     genHasVisibleItems = true;
-                    if (term !== "") set.open = true; // Auto-open set
+                    if (term !== "") set.open = true; 
                 } else {
                     set.classList.add('hidden');
                 }
             });
 
-            // Top Hits specific logic
             if (gen.classList.contains('era-hits')) {
                  let hitsVisible = false;
                  const hitCards = gen.querySelectorAll('.mini-grid img');
@@ -417,14 +459,8 @@ if (searchInput) {
 
 // --- Event Listeners ---
 if (packBtn) packBtn.addEventListener('click', pullCard);
-
-if (settingsBtn && settingsModal) {
-    settingsBtn.addEventListener('click', () => settingsModal.classList.add('active'));
-}
-
-if (closeSettingsBtn) {
-    closeSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('active'));
-}
+if (settingsBtn && settingsModal) settingsBtn.addEventListener('click', () => settingsModal.classList.add('active'));
+if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('active'));
 
 if (openClearModalBtn && confirmClearModal) {
     openClearModalBtn.addEventListener('click', () => {
@@ -433,15 +469,13 @@ if (openClearModalBtn && confirmClearModal) {
     });
 }
 
-if (cancelClearBtn) {
-    cancelClearBtn.addEventListener('click', () => confirmClearModal.classList.remove('active'));
-}
+if (cancelClearBtn) cancelClearBtn.addEventListener('click', () => confirmClearModal.classList.remove('active'));
 
 if (confirmClearBtn) {
     confirmClearBtn.addEventListener('click', () => {
         localStorage.removeItem('myBinder');
         localStorage.removeItem('myTopHits');
-        localStorage.removeItem('myCardNames'); // Clears names too!
+        localStorage.removeItem('myCardNames');
         renderSidebar([]);
         display.style.opacity = 0;
         bg.style.backgroundImage = 'none';
@@ -453,20 +487,18 @@ if (confirmClearBtn) {
         
         currentCardInfo = null;
         updateStarBtn();
-        searchInput.value = ''; // Clear search bar on reset
+        searchInput.value = ''; 
         
         confirmClearModal.classList.remove('active');
     });
 }
 
-// --- Install Instructions Modal Logic ---
 if (closeInstallBtn) {
     closeInstallBtn.addEventListener('click', () => {
         if (installInstructionsModal) installInstructionsModal.classList.remove('active');
     });
 }
 
-// --- PWA Install Prompt Logic ---
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
@@ -481,9 +513,7 @@ if (installAppBtn) {
         if (deferredPrompt) {
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') {
-                deferredPrompt = null;
-            }
+            if (outcome === 'accepted') deferredPrompt = null;
         } else {
             if (settingsModal) settingsModal.classList.remove('active');
             if (installInstructionsModal) installInstructionsModal.classList.add('active');
