@@ -58,6 +58,11 @@ let currentCardInfo = null;
 function init() {
     const savedBinder = JSON.parse(localStorage.getItem('myBinder')) || [];
     renderSidebar(savedBinder);
+    
+    // Hide install button completely if running in standalone PWA mode
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+        if (installAppBtn) installAppBtn.style.display = 'none';
+    }
 }
 
 function pullCard() {
@@ -82,6 +87,7 @@ function pullCard() {
 
         const tempImg = new Image();
         tempImg.src = imageUrl;
+        
         tempImg.onload = () => {
             img.src = imageUrl;
             bg.style.backgroundImage = `url(${imageUrl})`;
@@ -151,6 +157,7 @@ if (starBtn) {
         if (!currentCardInfo) return;
         
         let topHits = JSON.parse(localStorage.getItem('myTopHits')) || [];
+        
         if (topHits.includes(currentCardInfo.id)) {
             topHits = topHits.filter(id => id !== currentCardInfo.id); // Unstar
         } else {
@@ -285,6 +292,7 @@ function renderSidebar(collectedIds) {
                         const sId = parts.join('-');
                         const cardImg = document.createElement('img');
                         cardImg.src = `https://images.pokemontcg.io/${sId}/${sNum}.png`;
+                        
                         cardImg.onclick = (e) => {
                             e.stopPropagation();
                             document.getElementById('card-img').src = `https://images.pokemontcg.io/${sId}/${sNum}_hires.png`;
@@ -369,7 +377,11 @@ let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    if (installAppBtn) installAppBtn.style.display = 'block'; 
+    
+    // Only show install button if NOT running standalone
+    if (!window.matchMedia('(display-mode: standalone)').matches && window.navigator.standalone !== true) {
+        if (installAppBtn) installAppBtn.style.display = 'block'; 
+    }
 });
 
 if (installAppBtn) {
