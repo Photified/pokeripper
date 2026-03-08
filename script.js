@@ -1,6 +1,6 @@
 const GENERATIONS = [
-    { name: "Mega Evolution", class: "era-mega", color: "#10b981", sets: ['me3', 'me2pt5', 'me2', 'me1'] },
-    { name: "Scarlet & Violet", class: "era-sv", color: "#a855f7", sets: ['sv11', 'sv10', 'sv9', 'sv8pt5', 'sv8', 'sv7', 'sv6', 'sv5', 'sv4pt5', 'sv4', 'sv3pt5', 'sv3', 'sv2', 'sv1'] },
+    // { name: "Mega Evolution", class: "era-mega", color: "#10b981", sets: ['me3', 'me2pt5', 'me2', 'me1'] }, // Waiting for API to upload images
+    { name: "Scarlet & Violet", class: "era-sv", color: "#a855f7", sets: [/* 'sv11', 'sv10', 'sv9', */ 'sv8pt5', 'sv8', 'sv7', 'sv6', 'sv5', 'sv4pt5', 'sv4', 'sv3pt5', 'sv3', 'sv2', 'sv1'] },
     { name: "Sword & Shield", class: "era-swsh", color: "#3b82f6", sets: ['swsh12pt5gg', 'swsh12tg', 'swsh12', 'swsh11', 'swsh10', 'swsh9', 'swsh8', 'swsh7', 'swsh45', 'swsh4', 'swsh1'] },
     { name: "Sun & Moon", class: "era-sm", color: "#ec4899", sets: ['sm12', 'sm11', 'sm9', 'sm4', 'sm1'] },
     { name: "Vintage", class: "era-classic", color: "#facc15", sets: ['xy12', 'xy7', 'xy1', 'bw1', 'pl1', 'dp1', 'ex15', 'ex14', 'ex6', 'ex3', 'ex1', 'ecard1', 'neo4', 'neo3', 'neo2', 'neo1', 'gym2', 'gym1', 'base5', 'base4', 'base3', 'base2', 'base1'] }
@@ -23,9 +23,11 @@ const ALL_SETS = [
     { id: 'sv1', name: 'Scarlet & Violet', count: 258 }, { id: 'sv2', name: 'Paldea Evolved', count: 269 },
     { id: 'sv3', name: 'Obsidian Flames', count: 230 }, { id: 'sv3pt5', name: '151', count: 210 }, { id: 'sv4', name: 'Paradox Rift', count: 266 }, 
     { id: 'sv4pt5', name: 'Paldean Fates', count: 245 }, { id: 'sv5', name: 'Temporal Forces', count: 218 }, { id: 'sv6', name: 'Twilight Masquerade', count: 226 }, 
-    { id: 'sv7', name: 'Stellar Crown', count: 175 }, { id: 'sv8', name: 'Surging Sparks', count: 252 }, { id: 'sv8pt5', name: 'Prismatic Evolutions', count: 175 },
-    { id: 'sv9', name: 'Journey Together', count: 175 }, { id: 'sv10', name: 'Destined Rivals', count: 175 }, { id: 'sv11', name: 'Black Bolt & White Flare', count: 250 },
-    { id: 'me1', name: 'Mega Evolution', count: 180 }, { id: 'me2', name: 'Phantasmal Flames', count: 180 }, { id: 'me2pt5', name: 'Ascended Heroes', count: 180 }, { id: 'me3', name: 'Perfect Order', count: 180 }
+    { id: 'sv7', name: 'Stellar Crown', count: 175 }, { id: 'sv8', name: 'Surging Sparks', count: 252 }, { id: 'sv8pt5', name: 'Prismatic Evolutions', count: 175 }
+    
+    // --- TEMPORARILY DISABLED: Not yet uploaded to the pokemontcg.io database ---
+    // { id: 'sv9', name: 'Journey Together', count: 175 }, { id: 'sv10', name: 'Destined Rivals', count: 175 }, { id: 'sv11', name: 'Black Bolt & White Flare', count: 250 },
+    // { id: 'me1', name: 'Mega Evolution', count: 180 }, { id: 'me2', name: 'Phantasmal Flames', count: 180 }, { id: 'me2pt5', name: 'Ascended Heroes', count: 180 }, { id: 'me3', name: 'Perfect Order', count: 180 }
 ];
 
 // UI Elements
@@ -164,7 +166,6 @@ function renderSidebar(collectedIds) {
                             document.getElementById('display').classList.remove('is-popping');
                             document.getElementById('display').style.opacity = 1;
 
-                            // Update the Info Display for viewed cards
                             infoStatus.innerText = "Viewing Collection";
                             infoStatus.style.color = "#ccc";
                             infoDisplay.style.borderLeftColor = gen.color;
