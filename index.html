@@ -14,7 +14,7 @@
 
     #bg-tiles { position: absolute; top: -20%; left: -20%; width: 140%; height: 140%; z-index: -1; background-repeat: repeat; background-size: 250px; filter: blur(15px); opacity: 0.3; transform: rotate(-15deg); transition: background-image 0.5s ease; pointer-events: none; }
     
-    #display { z-index: 10; text-align: center; margin-right: 320px; position: relative; opacity: 0; }
+    #display { z-index: 10; text-align: center; margin-right: 320px; position: relative; opacity: 0; transition: opacity 0.3s ease; }
     img#card-img { max-height: 80vh; border-radius: 15px; box-shadow: 0 30px 60px rgba(0,0,0,1); position: relative; z-index: 2; }
 
     /* --- ANIMATIONS --- */
@@ -39,12 +39,19 @@
     
     .sidebar-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 15px; min-height: 40px; }
     
-    #card-info-display { display: flex; flex-direction: column; justify-content: center; border-left: 4px solid #444; padding-left: 12px; transition: border-color 0.3s ease; }
+    #card-info-display { display: flex; flex-direction: column; justify-content: center; border-left: 4px solid #444; padding-left: 12px; transition: border-color 0.3s ease; flex-grow: 1; }
     #info-status { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; margin: 0; font-weight: bold; color: #aaa; transition: color 0.3s ease; }
     #info-details { margin: 4px 0 0 0; font-weight: 800; font-size: 14px; color: #eee; }
 
-    #settings-btn { cursor: pointer; font-size: 24px; opacity: 0.8; transition: opacity 0.2s, transform 0.4s ease; user-select: none; padding: 15px; margin: -15px; position: relative; z-index: 2000; }
+    /* Top Right Buttons */
+    .header-actions { display: flex; align-items: center; gap: 5px; }
+    .icon-btn { cursor: pointer; font-size: 24px; padding: 10px; margin: -10px; position: relative; z-index: 2000; transition: all 0.2s ease; user-select: none; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; }
+    #settings-btn { opacity: 0.8; }
     #settings-btn:hover { opacity: 1; transform: rotate(90deg); }
+    
+    #star-btn { opacity: 0.2; pointer-events: none; filter: grayscale(100%); }
+    #star-btn.active { opacity: 1; filter: drop-shadow(0 0 8px gold); transform: scale(1.1); }
+    #star-btn:hover:not(.disabled) { transform: scale(1.2); }
 
     /* Button Layout */
     #pack-btn { width: 100%; padding: 15px; margin-bottom: 20px; font-size: 18px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; background: linear-gradient(135deg, #a855f7, #ec4899); color: white; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transition: transform 0.2s, box-shadow 0.2s; flex-shrink: 0; }
@@ -69,7 +76,8 @@
     /* Pokedex Styles */
     .gen-wrapper { margin-bottom: 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); overflow: hidden; }
     .gen-header { cursor: pointer; padding: 15px; font-weight: bold; text-transform: uppercase; font-size: 11px; letter-spacing: 2px; list-style: none; background: rgba(255,255,255,0.03); border-bottom: 2px solid var(--spine-color); color: var(--spine-color); text-align: center; }
-    .era-mega { --spine-color: #10b981; } .era-sv { --spine-color: #a855f7; } .era-swsh { --spine-color: #3b82f6; } .era-sm { --spine-color: #ec4899; } .era-classic { --spine-color: #facc15; }
+    .era-mega { --spine-color: #10b981; } .era-sv { --spine-color: #a855f7; } .era-swsh { --spine-color: #3b82f6; } .era-sm { --spine-color: #ec4899; } .era-classic { --spine-color: #facc15; } .era-hits { --spine-color: gold; }
+    
     .set-item { margin: 8px; border-radius: 4px; overflow: hidden; }
     .set-item summary { list-style: none; cursor: pointer; padding: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--spine-color); background: rgba(0,0,0,0.3); font-size: 11px; }
     .set-label { font-weight: 800; text-transform: uppercase; color: #eee; }
@@ -96,10 +104,13 @@
     <div id="sidebar-binder">
       <div class="sidebar-header">
         <div id="card-info-display">
-          <p id="info-status">POKETAB DEX</p>
+          <p id="info-status">POKE RIPPER</p>
           <p id="info-details">Ready to pull!</p>
         </div>
-        <div id="settings-btn" title="Settings">⚙️</div>
+        <div class="header-actions">
+          <div id="star-btn" class="icon-btn disabled" title="Add to Top Hits">⭐</div>
+          <div id="settings-btn" class="icon-btn" title="Settings">⚙️</div>
+        </div>
       </div>
       
       <button id="pack-btn">💥 Rip Pack</button>
@@ -110,7 +121,7 @@
   <div id="settings-modal" class="modal-overlay">
     <div class="modal-box">
       <h3>Settings</h3>
-      <button id="install-app-btn" class="modal-btn primary" style="display: none;">📱 Install App</button>
+      <button id="install-app-btn" class="modal-btn primary">📱 Install App</button>
       <button id="open-clear-modal-btn" class="modal-btn danger">🗑️ Clear Pokedex</button>
       <button id="close-settings-btn" class="modal-btn">Close</button>
     </div>

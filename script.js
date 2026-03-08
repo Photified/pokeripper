@@ -1,5 +1,5 @@
 const GENERATIONS = [
-    // { name: "Mega Evolution", class: "era-mega", color: "#10b981", sets: ['me3', 'me2pt5', 'me2', 'me1'] }, // Waiting for API to upload images
+    // { name: "Mega Evolution", class: "era-mega", color: "#10b981", sets: ['me3', 'me2pt5', 'me2', 'me1'] }, // Waiting for API
     { name: "Scarlet & Violet", class: "era-sv", color: "#a855f7", sets: [/* 'sv11', 'sv10', 'sv9', */ 'sv8pt5', 'sv8', 'sv7', 'sv6', 'sv5', 'sv4pt5', 'sv4', 'sv3pt5', 'sv3', 'sv2', 'sv1'] },
     { name: "Sword & Shield", class: "era-swsh", color: "#3b82f6", sets: ['swsh12pt5gg', 'swsh12tg', 'swsh12', 'swsh11', 'swsh10', 'swsh9', 'swsh8', 'swsh7', 'swsh45', 'swsh4', 'swsh1'] },
     { name: "Sun & Moon", class: "era-sm", color: "#ec4899", sets: ['sm12', 'sm11', 'sm9', 'sm4', 'sm1'] },
@@ -24,10 +24,6 @@ const ALL_SETS = [
     { id: 'sv3', name: 'Obsidian Flames', count: 230 }, { id: 'sv3pt5', name: '151', count: 210 }, { id: 'sv4', name: 'Paradox Rift', count: 266 }, 
     { id: 'sv4pt5', name: 'Paldean Fates', count: 245 }, { id: 'sv5', name: 'Temporal Forces', count: 218 }, { id: 'sv6', name: 'Twilight Masquerade', count: 226 }, 
     { id: 'sv7', name: 'Stellar Crown', count: 175 }, { id: 'sv8', name: 'Surging Sparks', count: 252 }, { id: 'sv8pt5', name: 'Prismatic Evolutions', count: 175 }
-    
-    // --- TEMPORARILY DISABLED: Not yet uploaded to the pokemontcg.io database ---
-    // { id: 'sv9', name: 'Journey Together', count: 175 }, { id: 'sv10', name: 'Destined Rivals', count: 175 }, { id: 'sv11', name: 'Black Bolt & White Flare', count: 250 },
-    // { id: 'me1', name: 'Mega Evolution', count: 180 }, { id: 'me2', name: 'Phantasmal Flames', count: 180 }, { id: 'me2pt5', name: 'Ascended Heroes', count: 180 }, { id: 'me3', name: 'Perfect Order', count: 180 }
 ];
 
 // UI Elements
@@ -40,6 +36,7 @@ const packBtn = document.getElementById('pack-btn');
 const infoDisplay = document.getElementById('card-info-display');
 const infoStatus = document.getElementById('info-status');
 const infoDetails = document.getElementById('info-details');
+const starBtn = document.getElementById('star-btn');
 
 // Settings Elements
 const settingsBtn = document.getElementById('settings-btn');
@@ -50,6 +47,9 @@ const confirmClearModal = document.getElementById('confirm-clear-modal');
 const cancelClearBtn = document.getElementById('cancel-clear-btn');
 const confirmClearBtn = document.getElementById('confirm-clear-btn');
 const installAppBtn = document.getElementById('install-app-btn');
+
+// State
+let currentCardInfo = null;
 
 function init() {
     const savedBinder = JSON.parse(localStorage.getItem('myBinder')) || [];
@@ -117,13 +117,108 @@ function handleStorageAndNotify(cardId, set, gen, formattedNum) {
         localStorage.setItem('myBinder', JSON.stringify(myBinder));
     }
 
+    currentCardInfo = { id: cardId, set: set, num: formattedNum };
+    updateStarBtn();
     renderSidebar(myBinder);
 }
+
+function updateStarBtn() {
+    if (!currentCardInfo) {
+        starBtn.classList.add('disabled');
+        starBtn.classList.remove('active');
+        starBtn.style.pointerEvents = 'none';
+        return;
+    }
+    
+    starBtn.classList.remove('disabled');
+    starBtn.style.pointerEvents = 'auto';
+    
+    let topHits = JSON.parse(localStorage.getItem('myTopHits')) || [];
+    if (topHits.includes(currentCardInfo.id)) {
+        starBtn.classList.add('active');
+    } else {
+        starBtn.classList.remove('active');
+    }
+}
+
+// Star button click event
+starBtn.addEventListener('click', () => {
+    if (!currentCardInfo) return;
+    
+    let topHits = JSON.parse(localStorage.getItem('myTopHits')) || [];
+    if (topHits.includes(currentCardInfo.id)) {
+        topHits = topHits.filter(id => id !== currentCardInfo.id); // Unstar
+    } else {
+        topHits.push(currentCardInfo.id); // Star
+    }
+    
+    localStorage.setItem('myTopHits', JSON.stringify(topHits));
+    updateStarBtn();
+    
+    const savedBinder = JSON.parse(localStorage.getItem('myBinder')) || [];
+    renderSidebar(savedBinder);
+});
 
 function renderSidebar(collectedIds) {
     const binderContent = document.getElementById('binder-content');
     binderContent.innerHTML = ''; 
 
+    // Sync Top Hits (remove cards if the main binder was cleared)
+    let topHits = JSON.parse(localStorage.getItem('myTopHits')) || [];
+    topHits = topHits.filter(id => collectedIds.includes(id));
+    localStorage.setItem('myTopHits', JSON.stringify(topHits));
+
+    // Render Top Hits Binder
+    if (topHits.length > 0) {
+        const hitsDetails = document.createElement('details');
+        hitsDetails.className = `gen-wrapper era-hits`;
+        hitsDetails.open = true; // Keep Top Hits open by default
+        
+        const hitsSummary = document.createElement('summary');
+        hitsSummary.className = "gen-header";
+        hitsSummary.innerHTML = `<span>⭐ Top Hits Binder</span>`;
+        
+        const hitsBody = document.createElement('div');
+        hitsBody.className = "gen-body";
+        
+        const grid = document.createElement('div');
+        grid.className = 'mini-grid';
+        
+        topHits.forEach(id => {
+            const parts = id.split('-');
+            const sNum = parts.pop();
+            const sId = parts.join('-');
+            const cardImg = document.createElement('img');
+            cardImg.src = `https://images.pokemontcg.io/${sId}/${sNum}.png`;
+            
+            cardImg.onclick = (e) => {
+                e.stopPropagation();
+                document.getElementById('card-img').src = `https://images.pokemontcg.io/${sId}/${sNum}_hires.png`;
+                document.getElementById('bg-tiles').style.backgroundImage = `url(https://images.pokemontcg.io/${sId}/${sNum}_hires.png)`;
+                document.getElementById('display').classList.remove('is-popping');
+                document.getElementById('display').style.opacity = 1;
+
+                const set = ALL_SETS.find(s => s.id === sId) || { name: sId };
+                const gen = GENERATIONS.find(g => g.sets.includes(sId)) || { color: 'gold' };
+
+                infoStatus.innerText = "Viewing Collection";
+                infoStatus.style.color = "#ccc";
+                infoDisplay.style.borderLeftColor = gen.color;
+                infoDetails.innerText = `${set.name} #${sNum}`;
+                
+                currentCardInfo = { id: id, set: set, num: sNum };
+                updateStarBtn();
+            };
+            grid.appendChild(cardImg);
+        });
+        
+        hitsBody.appendChild(grid);
+        hitsDetails.appendChild(hitsSummary);
+        hitsDetails.appendChild(hitsBody);
+        binderContent.appendChild(hitsDetails);
+    }
+
+    // Render Standard Binders
     GENERATIONS.forEach(gen => {
         const genSets = ALL_SETS.filter(s => gen.sets.includes(s.id));
         const hasCardsInGen = genSets.some(s => collectedIds.some(id => id.startsWith(s.id + '-')));
@@ -133,7 +228,7 @@ function renderSidebar(collectedIds) {
             genDetails.className = `gen-wrapper ${gen.class}`;
             const genSummary = document.createElement('summary');
             genSummary.className = "gen-header";
-            genSummary.innerHTML = `<span>${gen.name} Collection</span>`;
+            genSummary.innerHTML = `<span>${gen.name} Binder</span>`;
             const genBody = document.createElement('div');
             genBody.className = "gen-body";
 
@@ -170,6 +265,9 @@ function renderSidebar(collectedIds) {
                             infoStatus.style.color = "#ccc";
                             infoDisplay.style.borderLeftColor = gen.color;
                             infoDetails.innerText = `${set.name} #${sNum}`;
+                            
+                            currentCardInfo = { id: id, set: set, num: sNum };
+                            updateStarBtn();
                         };
                         grid.appendChild(cardImg);
                     });
@@ -210,25 +308,28 @@ if (cancelClearBtn) {
 if (confirmClearBtn) {
     confirmClearBtn.addEventListener('click', () => {
         localStorage.removeItem('myBinder');
+        localStorage.removeItem('myTopHits');
         renderSidebar([]);
         display.style.opacity = 0;
         bg.style.backgroundImage = 'none';
         
-        infoStatus.innerText = "POKETAB DEX";
+        infoStatus.innerText = "POKE RIPPER";
         infoStatus.style.color = "#aaa";
         infoDisplay.style.borderLeftColor = "#444";
         infoDetails.innerText = "Ready to pull!";
+        
+        currentCardInfo = null;
+        updateStarBtn();
         
         confirmClearModal.classList.remove('active');
     });
 }
 
-// PWA Install Prompt Logic
+// PWA Install Prompt Logic - Bulletproofed
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    installAppBtn.style.display = 'block'; 
 });
 
 installAppBtn.addEventListener('click', async () => {
@@ -237,8 +338,9 @@ installAppBtn.addEventListener('click', async () => {
         const { outcome } = await deferredPrompt.userChoice;
         if (outcome === 'accepted') {
             deferredPrompt = null;
-            installAppBtn.style.display = 'none';
         }
+    } else {
+        alert("To install, look for 'Add to Home Screen' in your browser's menu (usually accessed via the Share icon on iOS, or the three dots menu on Android).");
     }
 });
 
